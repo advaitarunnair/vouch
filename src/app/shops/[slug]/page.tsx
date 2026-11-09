@@ -96,12 +96,12 @@ export default async function ShopPage({ params }: { params: Promise<{ slug: str
             >
               {risky ? "BUY NOW BEFORE IT'S GONE" : "Add to bag"}
             </button>
-            <Link
-              href={`/share?url=${encodeURIComponent(`/shops/${shop.slug}`)}`}
+            <a
+              href={`/share?from=demo&url=${encodeURIComponent(`/shops/${shop.slug}`)}`}
               className="text-center text-sm font-medium underline underline-offset-4"
             >
               Check this shop with Vouch
-            </Link>
+            </a>
           </div>
         </section>
 

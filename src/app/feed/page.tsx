@@ -50,8 +50,8 @@ export default function FeedPage() {
               path={`/shops/${shop.slug}`}
               className="flex flex-col items-center gap-1 rounded-full p-2 text-white drop-shadow"
             />
-            <Link
-              href={`/share?url=${encodeURIComponent(`/shops/${shop.slug}`)}`}
+            <a
+              href={`/share?from=demo&url=${encodeURIComponent(`/shops/${shop.slug}`)}`}
               className="flex flex-col items-center gap-1 p-2 text-white drop-shadow"
               aria-label={`Check ${shop.name} with Vouch`}
             >
@@ -60,7 +60,7 @@ export default function FeedPage() {
                 <path d="M9 12l2 2 4-4" />
               </svg>
               <span className="text-xs font-medium">Vouch</span>
-            </Link>
+            </a>
           </div>
         </article>
       ))}

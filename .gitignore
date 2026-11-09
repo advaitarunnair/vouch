@@ -49,3 +49,6 @@ next-env.d.ts
 
 # seed script local state
 scripts/.seed-state.json
+
+# sqlite data
+/data/

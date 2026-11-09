@@ -1,12 +1,17 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function CheckInput() {
-  const router = useRouter();
   const [link, setLink] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // /share redirects here with ?error=no-link when a share had no usable link.
+    if (new URLSearchParams(window.location.search).get("error") === "no-link") {
+      setError("We couldn't find a link in what was shared. Paste the shop link here instead.");
+    }
+  }, []);
   const [shot, setShot] = useState<{ name: string; preview: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -25,7 +30,8 @@ export function CheckInput() {
       return;
     }
     setError(null);
-    router.push(`/share?url=${encodeURIComponent(withScheme)}`);
+    // Full navigation: /share is a route handler that creates the check and redirects.
+    window.location.assign(`/share?from=link&url=${encodeURIComponent(withScheme)}`);
   }
 
   function onFile(e: React.ChangeEvent<HTMLInputElement>) {

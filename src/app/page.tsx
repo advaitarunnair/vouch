@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CheckInput } from "@/components/CheckInput";
 import { ProductArt } from "@/components/ProductArt";
+import { InstallButton } from "@/components/Pwa";
 import { VouchWordmark } from "@/components/VouchLogo";
 import { SHOPS, formatPrice } from "@/lib/shops";
 
@@ -39,13 +40,17 @@ export default function Home() {
 
         <CheckInput />
 
+        <div className="mt-4">
+          <InstallButton />
+        </div>
+
         <section className="mt-10">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-500">Try a demo check</h2>
           <ul className="grid gap-3 sm:grid-cols-3">
             {SHOPS.map((shop) => (
               <li key={shop.slug}>
-                <Link
-                  href={`/share?url=${encodeURIComponent(`/shops/${shop.slug}`)}`}
+                <a
+                  href={`/share?from=demo&url=${encodeURIComponent(`/shops/${shop.slug}`)}`}
                   className="flex items-center gap-3 rounded-2xl bg-white p-3 ring-1 ring-slate-200 transition hover:ring-slate-400 sm:flex-col sm:items-start"
                 >
                   <ProductArt kind={shop.product.art} className="h-14 w-14 shrink-0 rounded-xl sm:h-auto sm:w-full" />
@@ -56,7 +61,7 @@ export default function Home() {
                     </p>
                     <p className="mt-1 text-xs text-slate-400">{DEMO_HINT[shop.demoProfile]}</p>
                   </div>
-                </Link>
+                </a>
               </li>
             ))}
           </ul>

@@ -94,3 +94,10 @@ Optional (only if all above works): web push on check completion; seller page wi
   ∈ RESOLVED_BUYER_FAVOUR, RESOLVED_SELLER_FAVOUR, RESOLVED_WITH_PAYOUT, CANCELED_BY_BUYER, ACCEPTED, DENIED, NONE.
   Sandbox-only `POST .../adjudicate` `{adjudication_outcome: BUYER_FAVOR|SELLER_FAVOR}` needs status UNDER_REVIEW.
 - Seed state: `scripts/.seed-state.json` (gitignored). Guide: `docs/SANDBOX_SETUP.md`.
+
+## App structure notes
+- `/share` is a **route handler** (GET): extracts first URL (`src/lib/extractUrl.ts`), `createCheck()` in SQLite
+  (`src/lib/db.ts`, `DATABASE_PATH` default `data/vouch.db`), 303 → `/check/[id]`. Link to it with plain `<a>`, never
+  `next/link` (prefetch would create checks).
+- PWA: `public/manifest.json` (share_target GET title/text/url), `public/sw.js` (network-first pages, never caches
+  /share, /check, /api), icons via `node scripts/generate-icons.mjs`.
