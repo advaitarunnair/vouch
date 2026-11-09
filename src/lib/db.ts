@@ -27,6 +27,11 @@ function open(): Database.Database {
       status      TEXT NOT NULL,          -- 'pending' | 'running' | 'needs_confirmation' | 'done' | 'error'
       result_json TEXT
     );
+    CREATE TABLE IF NOT EXISTS uploads (
+      check_id    TEXT PRIMARY KEY REFERENCES checks(id),
+      mime        TEXT NOT NULL,
+      data        BLOB NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS cache (
       key         TEXT PRIMARY KEY,
       value_json  TEXT NOT NULL,
@@ -78,4 +83,54 @@ export function createCheck(input: { source: CheckSource; url?: string; text?: s
 
 export function getCheck(id: string): CheckRow | undefined {
   return db().prepare(`SELECT * FROM checks WHERE id = ?`).get(id) as CheckRow | undefined;
+}
+
+export function updateCheck(id: string, patch: { status?: CheckStatus; result?: unknown }) {
+  const row = getCheck(id);
+  if (!row) return;
+  db()
+    .prepare(`UPDATE checks SET status = ?, result_json = ?, updated_at = ? WHERE id = ?`)
+    .run(
+      patch.status ?? row.status,
+      patch.result === undefined ? row.result_json : JSON.stringify(patch.result),
+      new Date().toISOString(),
+      id,
+    );
+}
+
+/**
+ * Atomically moves a check to 'running' so only one worker processes it.
+ * A check stuck in 'running' for over 2 minutes (e.g. server restart) can be reclaimed.
+ */
+export function claimCheck(id: string): boolean {
+  const staleBefore = new Date(Date.now() - 120_000).toISOString();
+  const res = db()
+    .prepare(
+      `UPDATE checks SET status = 'running', updated_at = ?
+       WHERE id = ? AND (status = 'pending' OR (status = 'running' AND updated_at < ?))`,
+    )
+    .run(new Date().toISOString(), id, staleBefore);
+  return res.changes === 1;
+}
+
+export function saveUpload(checkId: string, mime: string, data: Buffer) {
+  db().prepare(`INSERT OR REPLACE INTO uploads (check_id, mime, data) VALUES (?, ?, ?)`).run(checkId, mime, data);
+}
+
+export function getUpload(checkId: string): { mime: string; data: Buffer } | undefined {
+  return db().prepare(`SELECT mime, data FROM uploads WHERE check_id = ?`).get(checkId) as { mime: string; data: Buffer } | undefined;
+}
+
+export function cacheGet<T>(key: string): T | undefined {
+  const row = db().prepare(`SELECT value_json, expires_at FROM cache WHERE key = ?`).get(key) as
+    | { value_json: string; expires_at: number }
+    | undefined;
+  if (!row || row.expires_at < Date.now()) return undefined;
+  return JSON.parse(row.value_json) as T;
+}
+
+export function cacheSet(key: string, value: unknown, ttlMs: number) {
+  db()
+    .prepare(`INSERT OR REPLACE INTO cache (key, value_json, expires_at) VALUES (?, ?, ?)`)
+    .run(key, JSON.stringify(value), Date.now() + ttlMs);
 }

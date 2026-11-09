@@ -2,11 +2,19 @@
 
 import { useEffect, useState } from "react";
 
-/** Registers the service worker once per page load. */
+/**
+ * Registers the service worker in production. In development the dev server's JS
+ * chunks are not content-hashed, so a caching worker would serve stale code:
+ * unregister it and clear its caches instead.
+ */
 export function ServiceWorkerRegistrar() {
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
+    if (!("serviceWorker" in navigator)) return;
+    if (process.env.NODE_ENV === "production") {
       navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((err) => console.warn("SW registration failed", err));
+    } else {
+      navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister()));
+      if ("caches" in window) caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
     }
   }, []);
   return null;

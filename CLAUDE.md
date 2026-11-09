@@ -101,3 +101,17 @@ Optional (only if all above works): web push on check completion; seller page wi
   `next/link` (prefetch would create checks).
 - PWA: `public/manifest.json` (share_target GET title/text/url), `public/sw.js` (network-first pages, never caches
   /share, /check, /api), icons via `node scripts/generate-icons.mjs`.
+
+## Checks pipeline (Phase 4+)
+- `src/lib/check/pipeline.ts` `runCheck(id)`: claims the check atomically (`claimCheck`), runs steps identify → paypal → page → price,
+  saving `result_json` after each step (types in `src/lib/check/types.ts`). Started via `after()` from `/share`,
+  `/api/check/screenshot`, `/api/check/[id]/confirm`, and (idempotently) `POST /api/check/[id]/run` from the result page.
+- Identification (`src/lib/identify.ts`): own `/shops/<slug>` page or registry domain → registry; normal page → its domain;
+  social-style link (generic URL patterns, incl. our `/feed/p/<id>` demo posts) → link-preview metadata only → AI;
+  screenshot → AI vision. Confidence < 0.7 → `needs_confirmation` with candidates ("Is this the shop?").
+  Only pages the user submitted, our hosted pages, or a shop the user confirmed may be fetched (`page_url`).
+- AI: `src/lib/ai/llm.ts` `structured()` = `client.beta.messages.parse` + `betaZodOutputFormat` (zod/v4), effort `low` by default,
+  server-side refusal fallback (`fallbacks: "default"`) on supported models. Model from `ANTHROPIC_MODEL` (default `claude-opus-5-5`).
+  Without a key, AI steps degrade gracefully (identify → user picks the shop).
+- `fetchPage()` blocks private/loopback addresses (except our own origin) → `UnsafeUrlError` fails the check.
+- Service worker registers in production only (dev chunks aren't hashed).

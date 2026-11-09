@@ -1,4 +1,5 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, after, type NextRequest } from "next/server";
+import { runCheck } from "@/lib/check/pipeline";
 import { createCheck, type CheckSource } from "@/lib/db";
 import { extractFirstUrl } from "@/lib/extractUrl";
 
@@ -20,5 +21,6 @@ export function GET(req: NextRequest) {
   const source: CheckSource = from === "demo" || from === "link" ? from : "share";
   const sharedText = [sp.get("title"), sp.get("text")].filter(Boolean).join("\n") || undefined;
   const check = createCheck({ source, url, text: sharedText });
+  after(() => runCheck(check.id));
   return NextResponse.redirect(new URL(`/check/${check.id}`, origin), 303);
 }
