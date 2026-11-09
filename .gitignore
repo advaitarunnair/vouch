@@ -46,3 +46,6 @@ next-env.d.ts
 # local sqlite
 *.db
 *.db-journal
+
+# seed script local state
+scripts/.seed-state.json

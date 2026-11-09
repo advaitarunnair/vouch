@@ -80,3 +80,17 @@ Optional (only if all above works): web push on check completion; seller page wi
 - Mobile-first, clean UI. Fictional brand assets only (CSS/SVG, no real logos).
 - Server-only secrets stay in API routes / server modules; only `PAYPAL_CLIENT_ID_PUBLIC` reaches the client.
 - Stop and ask the user whenever credentials or a manual step are needed.
+
+## Verified PayPal API facts (from official OpenAPI specs, Nov 2026)
+- Sandbox base `https://api-m.sandbox.paypal.com`; OAuth `POST /v1/oauth2/token` (client_credentials). Client: `src/lib/paypal/client.ts`.
+- Orders v2: `intent: CAPTURE` + `payment_source.card` completes in one step; `custom_id` ≤ 255 (but Transaction Search
+  `custom_field` ≤ 127, pattern `[a-zA-Z0-9_'\-., ":;!?|]`), `invoice_id` ≤ 127 and must be unique. Card `expiry` is `YYYY-MM`.
+  Sandbox test Visa `4012888888881881`. Wallet orders: approval link `rel: "payer-action"`.
+- Payments v2 refund: `POST /v2/payments/captures/{id}/refund`, empty body = full refund.
+- Transaction Search `GET /v1/reporting/transactions`: `start_date`/`end_date` required (RFC3339 with seconds), max
+  range **31 days**, `page_size` ≤ 500, `page` 1-based, response `transaction_details[]`, `total_pages`. Up to **3h lag**.
+  `transaction_status`: D denied, P pending, S success, V reversed/refunded. Event codes: see PayPal "transaction event codes" doc (look up in Phase 5).
+- Disputes `GET /v1/customer/disputes` (`create_time_after`, `page_size`, `next_page_token`), detail `dispute_outcome.outcome_code`
+  ∈ RESOLVED_BUYER_FAVOUR, RESOLVED_SELLER_FAVOUR, RESOLVED_WITH_PAYOUT, CANCELED_BY_BUYER, ACCEPTED, DENIED, NONE.
+  Sandbox-only `POST .../adjudicate` `{adjudication_outcome: BUYER_FAVOR|SELLER_FAVOR}` needs status UNDER_REVIEW.
+- Seed state: `scripts/.seed-state.json` (gitignored). Guide: `docs/SANDBOX_SETUP.md`.
