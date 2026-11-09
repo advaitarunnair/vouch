@@ -117,28 +117,34 @@ const ShopGuess = z.object({
   confidence: z.number().describe("0 to 1: how sure you are this is the selling shop"),
   product: z.string().nullable(),
   price: z.string().nullable().describe("Price as shown, e.g. '$12.99', or null"),
-  evidence: z.string().describe("One short sentence citing what in the input identifies the shop"),
+  evidence: z
+    .string()
+    .describe("One short plain-English sentence, written for a shopper, saying what in the post, link or screenshot identifies the shop"),
   alternatives: z.array(z.object({ shop_name: z.string(), shop_domain: z.string().nullable() })).describe("Other plausible shops, at most 3"),
 });
 
 const LINK_SYSTEM = `You identify which online shop is selling the product promoted by a shared link.
-You only see the link's preview metadata (title, description, Open Graph tags), never the page itself.
+You only see the link preview (title, description and preview tags), never the page itself.
 Rules:
-- Base every field on the metadata. Do not use outside knowledge to guess a shop that is not named or implied.
+- Base every field on the link preview. Do not use outside knowledge to guess a shop that is not named or implied.
 - shop_domain: only if a domain appears or is unambiguously implied; otherwise null.
 - confidence: 0.9+ only when the shop is named explicitly; 0.4-0.7 when it is only implied; below 0.4 when unknown.
-- If the shop is not identifiable, set shop_name to null and suggest likely candidates in alternatives (from the known shops list if relevant).`;
+- In an ad or sponsored post, the brand being advertised is the selling shop unless a different seller is named.
+- If the shop is not identifiable, set shop_name to null and suggest likely candidates in alternatives (from the shops Vouch already knows, if relevant).
+- evidence is shown to shoppers: talk about "the post" or "the link".`;
 
 const SCREENSHOT_SYSTEM = `You read screenshots of online ads, product pages and social posts and extract what is being sold and by which shop.
 Rules:
 - Only report text and logos you can actually see. Do not guess a shop that is not visible.
 - shop_domain: only if a URL or domain is visible (address bar, caption, watermark); otherwise null.
 - price: exactly as displayed, including the currency symbol.
-- confidence: 0.9+ only when the shop name or domain is clearly visible; lower when inferred; below 0.4 when unknown.
-- If the shop is not identifiable, set shop_name to null and list plausible candidates in alternatives.`;
+- confidence: 0.85+ when the shop or brand name is written anywhere in the image (logo, caption, title, product name or URL); 0.4-0.7 when it is only hinted at; below 0.4 when unknown.
+- In an ad or sponsored post, the brand being advertised is the selling shop unless a different seller is named.
+- If the shop is not identifiable, set shop_name to null and list plausible candidates in alternatives.
+- evidence is shown to shoppers: talk about "the screenshot".`;
 
 function knownShopsNote(): string {
-  return `Known shops in Vouch's PayPal registry (only for matching names you see, not for guessing):\n${SHOP_REGISTRY.map(
+  return `Shops Vouch already knows (use only to match names you actually see, never to guess):\n${SHOP_REGISTRY.map(
     (e) => `- ${getShop(e.slug)!.name} (${e.domains[0]})`,
   ).join("\n")}`;
 }
@@ -267,7 +273,7 @@ export async function identifyFromUrl(rawUrl: string): Promise<LinkIdentifyResul
     schema: ShopGuess,
     system: LINK_SYSTEM,
     content: [
-      { type: "text", text: `${knownShopsNote()}\n\nLink preview metadata (JSON):\n${JSON.stringify(meta, null, 2)}` },
+      { type: "text", text: `${knownShopsNote()}\n\nLink preview:\n${JSON.stringify(meta, null, 2)}` },
     ],
   });
   const ai = { model: res.model, ms: res.ms, error: res.error };
