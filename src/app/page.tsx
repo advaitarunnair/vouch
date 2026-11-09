@@ -1,103 +1,87 @@
-import Image from "next/image";
+import Link from "next/link";
+import { CheckInput } from "@/components/CheckInput";
+import { ProductArt } from "@/components/ProductArt";
+import { VouchWordmark } from "@/components/VouchLogo";
+import { SHOPS, formatPrice } from "@/lib/shops";
+
+const DEMO_HINT: Record<string, string> = {
+  trusted: "Long PayPal history",
+  mixed: "Some refunds",
+  risky: "Pressure tactics",
+};
 
 export default function Home() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="min-h-dvh">
+      <header className="mx-auto flex max-w-2xl items-center justify-between px-4 py-4">
+        <VouchWordmark />
+        <Link href="/feed" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+          Demo feed
+        </Link>
+      </header>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
+      <main className="mx-auto max-w-2xl px-4 pb-16">
+        <section className="pt-6 pb-8">
+          <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            Trust scores from PayPal payment history
+          </p>
+          <h1 className="text-4xl font-bold leading-tight tracking-tight sm:text-5xl">
+            Reviews can be faked.
+            <br />
+            <span className="text-emerald-600">Payments can&apos;t.</span>
+          </h1>
+          <p className="mt-4 text-lg text-slate-600">
+            Check an online shop before you buy. Vouch looks at how real buyers paid, came back, and got refunds — then
+            lets you pay safely with PayPal.
+          </p>
+        </section>
+
+        <CheckInput />
+
+        <section className="mt-10">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-500">Try a demo check</h2>
+          <ul className="grid gap-3 sm:grid-cols-3">
+            {SHOPS.map((shop) => (
+              <li key={shop.slug}>
+                <Link
+                  href={`/share?url=${encodeURIComponent(`/shops/${shop.slug}`)}`}
+                  className="flex items-center gap-3 rounded-2xl bg-white p-3 ring-1 ring-slate-200 transition hover:ring-slate-400 sm:flex-col sm:items-start"
+                >
+                  <ProductArt kind={shop.product.art} className="h-14 w-14 shrink-0 rounded-xl sm:h-auto sm:w-full" />
+                  <div className="min-w-0">
+                    <p className="font-semibold">{shop.name}</p>
+                    <p className="truncate text-sm text-slate-500">
+                      {shop.product.name} · {formatPrice(shop.product.price)}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400">{DEMO_HINT[shop.demoProfile]}</p>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-xs text-slate-500">
+            All demo shops are fictional and hosted by Vouch.{" "}
+            <Link href="/feed" className="underline">
+              Open the demo feed
+            </Link>{" "}
+            to share an ad to Vouch like you would from your phone.
+          </p>
+        </section>
+
+        <section className="mt-12 grid gap-4 sm:grid-cols-3">
+          {[
+            ["1. Share or paste", "Send Vouch a shop link from any app, or upload a screenshot of an ad."],
+            ["2. We check payments", "If the shop sells with PayPal, its score comes from real payment, refund and dispute history."],
+            ["3. Buy safely", "Trusted shop? Pay with PayPal. High risk? See safer places to buy the same thing."],
+          ].map(([t, d]) => (
+            <div key={t} className="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+              <p className="font-semibold">{t}</p>
+              <p className="mt-1 text-sm text-slate-600">{d}</p>
+            </div>
+          ))}
+        </section>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
     </div>
   );
 }
