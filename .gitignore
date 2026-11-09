@@ -52,3 +52,6 @@ scripts/.seed-state.json
 
 # sqlite data
 /data/
+
+# local secrets (also covered by .env* above)
+.env.local
