@@ -9,6 +9,13 @@ import { formatPrice, getShop } from "@/lib/shops";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Payment complete | Vouch" };
 
+/** This page is reachable by link, so show only a hint of the payer's email. */
+function maskEmail(email: string | null): string | null {
+  if (!email) return null;
+  const [user, domain] = email.split("@");
+  return domain ? `${user.slice(0, 2)}•••@${domain}` : null;
+}
+
 interface LiveOrder {
   status: string;
   update_time?: string;
@@ -34,7 +41,7 @@ export default async function SuccessPage({ params }: { params: Promise<{ orderI
     ["Shop", shop?.name ?? order.shop_slug],
     ["Item", shop?.product.name ?? null],
     ["Amount", formatPrice(Number(order.amount), order.currency)],
-    ["Paid by", [order.payer_name, order.payer_email].filter(Boolean).join(" · ") || null],
+    ["Paid by", [order.payer_name, maskEmail(order.payer_email)].filter(Boolean).join(" · ") || null],
     ["PayPal order ID", order.id],
     ["Capture ID", order.capture_id],
     ["Status (from PayPal)", status],

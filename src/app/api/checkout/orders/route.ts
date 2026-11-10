@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientIp, rateLimited, tooManyRequests } from "@/lib/rateLimit";
 import * as z from "zod/v4";
 import { readResult } from "@/lib/check/pipeline";
 import { createCheckoutOrder } from "@/lib/checkout";
@@ -12,6 +13,8 @@ const Body = z.object({ check_id: z.string().min(1).max(64) });
 // Creates a PayPal order (Orders v2) for the shop in a finished, passing Tier 1 check.
 // The amount is taken from the shop's catalogue on the server, never from the request.
 export async function POST(req: Request) {
+  const wait = rateLimited("order", clientIp(req));
+  if (wait) return tooManyRequests(wait);
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "Missing check_id" }, { status: 400 });
   const row = getCheck(parsed.data.check_id);

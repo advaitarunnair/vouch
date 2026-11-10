@@ -1,4 +1,5 @@
 import { NextResponse, after, type NextRequest } from "next/server";
+import { clientIp, rateLimited } from "@/lib/rateLimit";
 import { runCheck } from "@/lib/check/pipeline";
 import { createCheck, type CheckSource } from "@/lib/db";
 import { extractFirstUrl } from "@/lib/extractUrl";
@@ -15,6 +16,10 @@ export function GET(req: NextRequest) {
 
   if (!url) {
     return NextResponse.redirect(new URL("/?error=no-link", origin), 303);
+  }
+
+  if (rateLimited("check", clientIp(req))) {
+    return NextResponse.redirect(new URL("/?error=busy", origin), 303);
   }
 
   const from = sp.get("from");

@@ -6,7 +6,7 @@ import type { MarketOffer } from "@/lib/priceCheck";
 // Channel3 product search (https://docs.trychannel3.com), used for the price check and
 // safer alternatives. Server-side only: the API key never reaches the browser.
 
-const CACHE_TTL_MS = 30 * 60 * 1000; // prices change: keep this short (offer URLs are refetched by Phase 7 at display time)
+const CACHE_TTL_MS = 30 * 60 * 1000; // prices change: keep this short (offer URLs are refetched when alternatives are displayed)
 
 let client: Channel3 | null = null;
 const getClient = () => (client ??= new Channel3({ apiKey: process.env.CHANNEL3_API_KEY, maxRetries: 2, timeoutInSeconds: 15 }));

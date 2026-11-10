@@ -39,7 +39,7 @@ export interface CheckResult {
   steps: Record<StepKey, StepState>;
   identification?: Identification;
   page?: PageSnapshot;
-  /** Which score applies: 1 = verified by PayPal payments, 2 = public signals only (Phase 6). */
+  /** Which score applies: 1 = verified by PayPal payments, 2 = public signals only. */
   tier?: 1 | 2;
   tier1?: Tier1Result;
   price?: {

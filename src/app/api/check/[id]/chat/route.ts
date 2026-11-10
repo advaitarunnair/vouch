@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientIp, rateLimited, tooManyRequests } from "@/lib/rateLimit";
 import * as z from "zod/v4";
 import { answerQuestion } from "@/lib/ai/chat";
 import { readResult } from "@/lib/check/pipeline";
@@ -17,6 +18,8 @@ const Body = z.object({
 // Grounded chatbot for one finished check.
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const wait = rateLimited("chat", clientIp(req));
+  if (wait) return tooManyRequests(wait);
   const row = getCheck(id);
   if (!row) return NextResponse.json({ error: "Check not found" }, { status: 404 });
   if (row.status !== "done") return NextResponse.json({ error: "Ask again once the check has finished" }, { status: 409 });

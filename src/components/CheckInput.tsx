@@ -8,9 +8,9 @@ export function CheckInput() {
 
   useEffect(() => {
     // /share redirects here with ?error=no-link when a share had no usable link.
-    if (new URLSearchParams(window.location.search).get("error") === "no-link") {
-      setError("We couldn't find a link in what was shared. Paste the shop link here instead.");
-    }
+    const err = new URLSearchParams(window.location.search).get("error");
+    if (err === "no-link") setError("We couldn't find a link in what was shared. Paste the shop link here instead.");
+    if (err === "busy") setError("You've started a lot of checks. Please try again a little later.");
   }, []);
   const [shot, setShot] = useState<{ name: string; preview: string } | null>(null);
   const [uploading, setUploading] = useState(false);

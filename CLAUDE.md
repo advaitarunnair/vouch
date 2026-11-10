@@ -179,3 +179,12 @@ Optional (only if all above works): web push on check completion; seller page wi
   INSTRUMENT_DECLINED handled. Routes: `POST /api/checkout/orders`, `POST /api/checkout/orders/[orderId]/capture`.
 - `/checkout/success/[orderId]` shows stored details and confirms status live via `GET /v2/checkout/orders/{id}`.
 - Popups opened by automated clicks are blocked in the in-app browser: a human must click "Pay with PayPal" to approve.
+
+## Deploy & ops (Phase 9)
+- `render.yaml` Blueprint (free plan, `npm ci && npm run build`, `npm start`, health `/api/health`, secrets `sync: false`,
+  `DATABASE_PATH=/tmp/vouch.db`, `APP_URL` must be set to the service URL). Node pinned via `.node-version` (20.20.2).
+- `/api/health`: DB check + which integrations are configured (no secrets, no external calls) — use for uptime pings.
+- Rate limits (`src/lib/rateLimit.ts`, in-memory per IP): 30 checks/h, 60 chat/h, 30 orders/h; `/share` redirects to `/?error=busy`.
+- Page scan and price check run in parallel (`Promise.all`) → ~13s per check.
+- Local prod test: `NEXT_DIST_DIR=.next-prod npm run build` then `NEXT_DIST_DIR=.next-prod PORT=3100 APP_URL=http://localhost:3100 npx next start -p 3100`.
+- README placeholders to fill after deploy: `_HOSTED_URL_`, `_SANDBOX_BUYER_EMAIL_`, `_SANDBOX_BUYER_PASSWORD_`.

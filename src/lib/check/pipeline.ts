@@ -1,7 +1,17 @@
 import "server-only";
-import { claimCheck, getCheck, getUpload, updateCheck, type CheckRow } from "@/lib/db";
+import {
+  claimCheck,
+  getCheck,
+  getUpload,
+  updateCheck,
+  type CheckRow,
+} from "@/lib/db";
 import { appOrigin, fetchPage } from "@/lib/fetchPage";
-import { CONFIDENCE_THRESHOLD, identifyFromScreenshot, identifyFromUrl } from "@/lib/identify";
+import {
+  CONFIDENCE_THRESHOLD,
+  identifyFromScreenshot,
+  identifyFromUrl,
+} from "@/lib/identify";
 import { getPayPalHistory } from "@/lib/paypal/history";
 import { computeTier1 } from "@/lib/score/tier1";
 import { registryBySlug, shopCredentials } from "@/lib/shopRegistry";
@@ -13,19 +23,35 @@ import { domainAge } from "@/lib/rdap";
 import { computeTier2 } from "@/lib/score/tier2";
 import { channel3Configured, searchMarket } from "@/lib/channel3";
 import { comparePrice, parsePrice, type MarketOffer } from "@/lib/priceCheck";
-import { emptyResult, type CheckResult, type CheckView, type StepKey } from "./types";
+import {
+  emptyResult,
+  type CheckResult,
+  type CheckView,
+  type StepKey,
+} from "./types";
 
 // Runs a check's steps in order, saving progress after each one so the result
 // page can show live status. Later phases add the PayPal, page-scan and price steps.
 
 export function readResult(row: CheckRow): CheckResult {
-  return row.result_json ? (JSON.parse(row.result_json) as CheckResult) : emptyResult();
+  return row.result_json
+    ? (JSON.parse(row.result_json) as CheckResult)
+    : emptyResult();
 }
 
 function checkoutView(row: CheckRow): CheckView["checkout"] {
-  if (row.status !== "done") return { eligible: false, reason: "Check not finished" };
+  if (row.status !== "done")
+    return { eligible: false, reason: "Check not finished" };
   const e = checkoutEligibility(readResult(row));
-  return e.eligible ? { eligible: true, clientId: e.clientId, amount: e.amount, currency: e.currency, label: e.label } : e;
+  return e.eligible
+    ? {
+        eligible: true,
+        clientId: e.clientId,
+        amount: e.amount,
+        currency: e.currency,
+        label: e.label,
+      }
+    : e;
 }
 
 export function toView(row: CheckRow): CheckView {
@@ -38,23 +64,40 @@ export function toView(row: CheckRow): CheckView {
     created_at: row.created_at,
     updated_at: row.updated_at,
     result: readResult(row),
-    suggested_questions: row.status === "done" ? suggestedQuestions(readResult(row)) : [],
+    suggested_questions:
+      row.status === "done" ? suggestedQuestions(readResult(row)) : [],
     checkout: checkoutView(row),
   };
 }
 
-async function step<T>(id: string, result: CheckResult, key: StepKey, fn: () => Promise<T>): Promise<T> {
+async function step<T>(
+  id: string,
+  result: CheckResult,
+  key: StepKey,
+  fn: () => Promise<T>,
+): Promise<T> {
   result.steps[key] = { status: "running" };
   updateCheck(id, { result });
   const started = Date.now();
   try {
     const out = await fn();
     const ms = Date.now() - started;
-    result.steps[key] = { ...result.steps[key], status: result.steps[key].status === "running" ? "done" : result.steps[key].status, ms };
+    result.steps[key] = {
+      ...result.steps[key],
+      status:
+        result.steps[key].status === "running"
+          ? "done"
+          : result.steps[key].status,
+      ms,
+    };
     console.info(`[check ${id}] ${key} ${ms}ms`);
     return out;
   } catch (err) {
-    result.steps[key] = { status: "error", ms: Date.now() - started, note: err instanceof Error ? err.message : String(err) };
+    result.steps[key] = {
+      status: "error",
+      ms: Date.now() - started,
+      note: err instanceof Error ? err.message : String(err),
+    };
     console.error(`[check ${id}] ${key} failed`, err);
     throw err;
   } finally {
@@ -76,10 +119,16 @@ export async function runCheck(id: string): Promise<void> {
           if (!upload) throw new Error("The screenshot upload is missing");
           result.identification = await identifyFromScreenshot(upload);
         } else {
-          const { identification, page } = await identifyFromUrl(row.input_url!);
+          const { identification, page } = await identifyFromUrl(
+            row.input_url!,
+          );
           result.identification = identification;
           // Keep the page text when the user submitted a shop page (not for social-style links).
-          if (page && identification.page_url && page.finalUrl === identification.page_url) {
+          if (
+            page &&
+            identification.page_url &&
+            page.finalUrl === identification.page_url
+          ) {
             result.page = {
               url: page.finalUrl,
               https: page.https,
@@ -97,7 +146,10 @@ export async function runCheck(id: string): Promise<void> {
           : "Shop not identified";
       });
 
-      if (!result.identification?.shop_name || result.identification.confidence < CONFIDENCE_THRESHOLD) {
+      if (
+        !result.identification?.shop_name ||
+        result.identification.confidence < CONFIDENCE_THRESHOLD
+      ) {
         updateCheck(id, { status: "needs_confirmation", result });
         return;
       }
@@ -123,18 +175,28 @@ export async function runCheck(id: string): Promise<void> {
     }
 
     // 2. PayPal payment history (Tier 1) for shops in the PayPal registry.
-    const entry = result.identification?.registry_slug ? registryBySlug(result.identification.registry_slug) : undefined;
+    const entry = result.identification?.registry_slug
+      ? registryBySlug(result.identification.registry_slug)
+      : undefined;
     if (entry && shopCredentials(entry)) {
       await step(id, result, "paypal", async () => {
         const history = await getPayPalHistory(entry);
-        const score = history ? computeTier1(history.features, entry.slug) : null;
+        const score = history
+          ? computeTier1(history.features, entry.slug)
+          : null;
         if (history && score) {
           result.tier = 1;
-          result.tier1 = { score, features: history.features, sources: history.sources, fetched_at: history.fetched_at };
+          result.tier1 = {
+            score,
+            features: history.features,
+            sources: history.sources,
+            fetched_at: history.fetched_at,
+          };
           result.steps.paypal.note = `${history.features.payments} payments, ${history.features.disputes} disputes in ${history.features.windowDays} days`;
         } else {
           result.tier = 2;
-          result.steps.paypal.note = "No PayPal sales found in the last 30 days";
+          result.steps.paypal.note =
+            "No PayPal sales found in the last 30 days";
         }
       }).catch(() => {
         // PayPal unavailable: fall back to public signals rather than failing the whole check.
@@ -142,20 +204,34 @@ export async function runCheck(id: string): Promise<void> {
       });
     } else {
       result.tier = 2;
-      result.steps.paypal = { status: "skipped", note: "No PayPal history for this shop: public signals only" };
+      result.steps.paypal = {
+        status: "skipped",
+        note: "No PayPal history for this shop: public signals only",
+      };
     }
 
     // 3. Shop page scan (Claude, verified quotes) plus domain age (RDAP) and HTTPS.
-    {
+    const pageStep = async () => {
       const idn0 = result.identification!;
       const pageUrl = result.page?.url ?? idn0.page_url;
-      const hosted = !!pageUrl && new URL(pageUrl).origin === new URL(appOrigin()).origin;
-      const host = hosted ? null : (idn0.shop_domain ?? (pageUrl ? new URL(pageUrl).hostname : null));
+      const hosted =
+        !!pageUrl && new URL(pageUrl).origin === new URL(appOrigin()).origin;
+      const host = hosted
+        ? null
+        : (idn0.shop_domain ?? (pageUrl ? new URL(pageUrl).hostname : null));
       if (result.page || host) {
         await step(id, result, "page", async () => {
           const [scanRes, age] = await Promise.all([
-            result.page ? scanPage({ url: result.page.url, title: result.page.title, text: result.page.text }) : Promise.resolve(null),
-            host && !idn0.registry_slug ? domainAge(host) : Promise.resolve(null),
+            result.page
+              ? scanPage({
+                  url: result.page.url,
+                  title: result.page.title,
+                  text: result.page.text,
+                })
+              : Promise.resolve(null),
+            host && !idn0.registry_slug
+              ? domainAge(host)
+              : Promise.resolve(null),
           ]);
           result.signals = {
             hosted,
@@ -166,45 +242,67 @@ export async function runCheck(id: string): Promise<void> {
           };
           const risks = scanRes?.scan?.risks.length ?? 0;
           const notes = [
-            scanRes?.scan ? `${risks} warning sign${risks === 1 ? "" : "s"}, ${scanRes.scan.positives.length} good sign${scanRes.scan.positives.length === 1 ? "" : "s"}` : scanRes ? "Page scan unavailable" : "No page to scan",
-            age?.age_days != null ? `domain ${Math.floor(age.age_days / 365)}y old` : null,
+            scanRes?.scan
+              ? `${risks} warning sign${risks === 1 ? "" : "s"}, ${scanRes.scan.positives.length} good sign${scanRes.scan.positives.length === 1 ? "" : "s"}`
+              : scanRes
+                ? "Page scan unavailable"
+                : "No page to scan",
+            age?.age_days != null
+              ? `domain ${Math.floor(age.age_days / 365)}y old`
+              : null,
           ].filter(Boolean);
           result.steps.page.note = notes.join(", ");
         }).catch(() => {});
       } else {
         result.steps.page = { status: "skipped", note: "No shop page to scan" };
       }
-    }
+    };
 
     // 4. Price check against the wider market (Channel3). Informational for Tier 1, a signal for Tier 2.
-    const idn = result.identification!;
-    const product = idn.product ?? result.page?.title ?? null;
-    if (product && channel3Configured()) {
-      await step(id, result, "price", async () => {
-        const { query } = await marketQueryFor({
-          product,
-          title: result.page?.title,
-          description: result.page?.description,
-          pageText: result.page?.text,
+    const priceStep = async () => {
+      const idn = result.identification!;
+      const product = idn.product ?? result.page?.title ?? null;
+      if (product && channel3Configured()) {
+        await step(id, result, "price", async () => {
+          const { query } = await marketQueryFor({
+            product,
+            title: result.page?.title,
+            description: result.page?.description,
+            pageText: result.page?.text,
+          });
+          const market = await searchMarket(query);
+          const shopHost = idn.shop_domain?.replace(/^www\./, "");
+          const check = comparePrice(parsePrice(idn.price), market.offers);
+          result.price = {
+            query,
+            check,
+            // Kept for "safer alternatives": in-stock offers from other merchants, one per product.
+            alternatives: dedupeByProduct(
+              market.offers.filter(
+                (o) => !shopHost || !o.domain.endsWith(shopHost),
+              ),
+            ).slice(0, 8),
+            fetched_at: market.fetched_at,
+          };
+          result.steps.price.note =
+            check.market_median !== null
+              ? `Typical price ${check.market_median.toFixed(2)} ${check.currency} (${check.comparables} compared)`
+              : check.text;
+        }).catch(() => {
+          // Price data is optional: keep going without it.
         });
-        const market = await searchMarket(query);
-        const shopHost = idn.shop_domain?.replace(/^www\./, "");
-        const check = comparePrice(parsePrice(idn.price), market.offers);
-        result.price = {
-          query,
-          check,
-          // Kept for "safer alternatives": in-stock offers from other merchants, one per product.
-          alternatives: dedupeByProduct(market.offers.filter((o) => !shopHost || !o.domain.endsWith(shopHost))).slice(0, 8),
-          fetched_at: market.fetched_at,
+      } else {
+        result.steps.price = {
+          status: "skipped",
+          note: product
+            ? "Price comparison unavailable"
+            : "No product to compare",
         };
-        result.steps.price.note =
-          check.market_median !== null ? `Typical price ${check.market_median.toFixed(2)} ${check.currency} (${check.comparables} compared)` : check.text;
-      }).catch(() => {
-        // Price data is optional: keep going without it.
-      });
-    } else {
-      result.steps.price = { status: "skipped", note: product ? "Price comparison unavailable" : "No product to compare" };
-    }
+      }
+    };
+
+    // Steps 3 and 4 don't depend on each other: run them side by side.
+    await Promise.all([pageStep(), priceStep()]);
 
     // Tier 2: no usable PayPal history, so score from public signals only.
     if (result.tier !== 1) {

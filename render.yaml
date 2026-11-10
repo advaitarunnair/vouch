@@ -1,0 +1,39 @@
+# Render Blueprint: https://render.com/docs/blueprint-spec
+# Secrets marked `sync: false` are prompted for when the Blueprint is first created.
+services:
+  - type: web
+    name: vouch
+    runtime: node
+    plan: free # spins down after 15 min idle; see README "Keeping the demo awake"
+    region: oregon
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PAYPAL_ENV
+        value: sandbox
+      - key: ANTHROPIC_MODEL
+        value: claude-opus-5-5
+      - key: DATABASE_PATH
+        value: /tmp/vouch.db # ephemeral on Render free; checks and caches rebuild on demand
+      - key: APP_URL
+        sync: false # e.g. https://vouch.onrender.com (no trailing slash)
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: CHANNEL3_API_KEY
+        sync: false
+      - key: SHOP_AURORA_CLIENT_ID
+        sync: false
+      - key: SHOP_AURORA_CLIENT_SECRET
+        sync: false
+      - key: SHOP_GLOWBOX_CLIENT_ID
+        sync: false
+      - key: SHOP_GLOWBOX_CLIENT_SECRET
+        sync: false
+      - key: SHOP_FLASHDEAL_CLIENT_ID
+        sync: false
+      - key: SHOP_FLASHDEAL_CLIENT_SECRET
+        sync: false

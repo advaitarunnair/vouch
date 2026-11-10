@@ -1,4 +1,5 @@
 import { NextResponse, after } from "next/server";
+import { clientIp, rateLimited, tooManyRequests } from "@/lib/rateLimit";
 import { runCheck } from "@/lib/check/pipeline";
 import { createCheck, saveUpload } from "@/lib/db";
 
@@ -9,6 +10,8 @@ const TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
 
 // Screenshot upload: stores the image, creates a check and starts it.
 export async function POST(req: Request) {
+  const wait = rateLimited("check", clientIp(req));
+  if (wait) return tooManyRequests(wait);
   const form = await req.formData().catch(() => null);
   const file = form?.get("image");
   if (!(file instanceof File)) return NextResponse.json({ error: "Attach a screenshot image" }, { status: 400 });

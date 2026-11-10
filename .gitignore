@@ -58,3 +58,6 @@ scripts/.seed-state.json
 
 # Third-party agent skills: restore with `npx skills experimental_install` (see skills-lock.json)
 .claude/skills/
+
+# local production build
+/.next-prod/
