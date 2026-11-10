@@ -418,7 +418,7 @@ async function disputes() {
     for (const d of list) {
       let detail = await paypalRequest<DisputeDetail>(creds, `/v1/customer/disputes/${d.dispute_id}`);
       console.log(
-        `  ${d.dispute_id} ${detail.status} ${detail.dispute_life_cycle_stage ?? ""} ${detail.reason ?? ""} outcome=${detail.dispute_outcome?.outcome_code ?? "-"}`,
+        `  ${d.dispute_id} ${detail.status} ${detail.dispute_life_cycle_stage ?? ""} ${detail.reason ?? ""} outcome=${detail.dispute_outcome?.outcome_code ?? "-"} actions=[${(detail.links ?? []).map((l) => l.rel).filter((r) => r !== "self").join(",")}]`,
       );
       if (!settle || detail.status === "RESOLVED") continue;
       const has = (rel: string) => detail.links?.some((l) => l.rel === rel);
