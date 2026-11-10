@@ -115,3 +115,15 @@ Optional (only if all above works): web push on check completion; seller page wi
   Without a key, AI steps degrade gracefully (identify → user picks the shop).
 - `fetchPage()` blocks private/loopback addresses (except our own origin) → `UnsafeUrlError` fails the check.
 - Service worker registers in production only (dev chunks aren't hashed).
+
+## Tier 1 scoring (Phase 5)
+- Data: `src/lib/paypal/history.ts` → Transaction Search last 30 days (`balance_affecting_records_only=N` so pending refunds count),
+  ≤31-day windows + pagination, 12-window look-back for first sale; Disputes list + details. Cached 1h (`paypal-history:v1:<slug>`).
+- Parsing (`src/lib/paypal/features.ts`, unit-tested): sale = positive `T00xx` (T0005 card, T0006 checkout) not denied; refund = `T1107`
+  linked via `paypal_reference_id`; buyer = `custom_field` → payer account id; ignore T1900/T0300/T1110. Lost dispute =
+  outcome `RESOLVED_BUYER_FAVOUR` or `ACCEPTED`.
+- Model (`src/lib/score/tier1.ts`, unit-tested): Beta smoothing of problem-order rate (prior mean 0.15, strength 20) and repeat
+  rate (0.2, 10); logit = 1.2 − 10·(fail−0.10) + 3·(repeat−0.20) − 8·lost/(n+5) + 0.4·ln(1+n/20) + 0.3·min(1,days/365);
+  score = 100·sigmoid; 5,000 seeded Monte Carlo draws → 5th–95th percentile range. Labels: ≥75 Trusted, 50–74 Use caution, <50 High risk.
+- Live sandbox (Nov 10): Aurora 92 [84–96], Glowbox 72 [48–86], FlashDeal 25 [9–51] before disputes settled.
+- `npm test` runs vitest.

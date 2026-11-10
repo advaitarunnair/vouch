@@ -2,6 +2,9 @@ import "server-only";
 import { claimCheck, getCheck, getUpload, updateCheck, type CheckRow } from "@/lib/db";
 import { appOrigin, fetchPage } from "@/lib/fetchPage";
 import { CONFIDENCE_THRESHOLD, identifyFromScreenshot, identifyFromUrl } from "@/lib/identify";
+import { getPayPalHistory } from "@/lib/paypal/history";
+import { computeTier1 } from "@/lib/score/tier1";
+import { registryBySlug, shopCredentials } from "@/lib/shopRegistry";
 import { emptyResult, type CheckResult, type CheckView, type StepKey } from "./types";
 
 // Runs a check's steps in order, saving progress after each one so the result
@@ -103,8 +106,31 @@ export async function runCheck(id: string): Promise<void> {
       }
     }
 
-    // 2-4. PayPal history, page scan and price check arrive in Phases 5 and 6.
-    for (const key of ["paypal", "page", "price"] as const) {
+    // 2. PayPal payment history (Tier 1) for shops in the PayPal registry.
+    const entry = result.identification?.registry_slug ? registryBySlug(result.identification.registry_slug) : undefined;
+    if (entry && shopCredentials(entry)) {
+      await step(id, result, "paypal", async () => {
+        const history = await getPayPalHistory(entry);
+        const score = history ? computeTier1(history.features, entry.slug) : null;
+        if (history && score) {
+          result.tier = 1;
+          result.tier1 = { score, features: history.features, sources: history.sources, fetched_at: history.fetched_at };
+          result.steps.paypal.note = `${history.features.payments} payments, ${history.features.disputes} disputes in ${history.features.windowDays} days`;
+        } else {
+          result.tier = 2;
+          result.steps.paypal.note = "No PayPal sales found in the last 30 days";
+        }
+      }).catch(() => {
+        // PayPal unavailable: fall back to public signals rather than failing the whole check.
+        result.tier = 2;
+      });
+    } else {
+      result.tier = 2;
+      result.steps.paypal = { status: "skipped", note: "No PayPal history for this shop: public signals only" };
+    }
+
+    // 3-4. Page scan and price check arrive in Phase 6.
+    for (const key of ["page", "price"] as const) {
       if (result.steps[key].status === "pending") result.steps[key] = { status: "skipped", note: "Coming in a later phase" };
     }
     updateCheck(id, { status: "done", result });

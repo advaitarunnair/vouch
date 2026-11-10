@@ -1,5 +1,7 @@
 // Shape of checks.result_json, shared by the server pipeline and the result page.
 import type { Identification } from "@/lib/identify";
+import type { PayPalHistory } from "@/lib/paypal/history";
+import type { PayPalFeatures, Tier1Score } from "@/lib/score/tier1";
 
 export type StepKey = "identify" | "paypal" | "page" | "price";
 export type StepStatus = "pending" | "running" | "done" | "skipped" | "error";
@@ -21,10 +23,21 @@ export interface PageSnapshot {
   fetched_at: string;
 }
 
+export interface Tier1Result {
+  score: Tier1Score;
+  features: PayPalFeatures;
+  sources: PayPalHistory["sources"];
+  /** When PayPal data was fetched (cached for up to an hour). */
+  fetched_at: string;
+}
+
 export interface CheckResult {
   steps: Record<StepKey, StepState>;
   identification?: Identification;
   page?: PageSnapshot;
+  /** Which score applies: 1 = verified by PayPal payments, 2 = public signals only (Phase 6). */
+  tier?: 1 | 2;
+  tier1?: Tier1Result;
   error?: string;
 }
 
