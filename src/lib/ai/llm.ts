@@ -33,7 +33,9 @@ export async function structured<T extends z.ZodType>(opts: {
   label: string;
   schema: T;
   system: string;
-  content: UserContent;
+  /** A single user turn, or a full conversation via `messages`. */
+  content?: UserContent;
+  messages?: Anthropic.Beta.BetaMessageParam[];
   effort?: "low" | "medium" | "high";
   maxTokens?: number;
 }): Promise<StructuredResult<z.infer<T>>> {
@@ -50,7 +52,7 @@ export async function structured<T extends z.ZodType>(opts: {
       model: m,
       max_tokens: opts.maxTokens ?? 4000,
       system: opts.system,
-      messages: [{ role: "user", content: opts.content }],
+      messages: opts.messages ?? [{ role: "user", content: opts.content ?? [] }],
       output_config: { format: betaZodOutputFormat(opts.schema), effort: opts.effort ?? "low" },
       ...(useFallback ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" as const } : {}),
     });

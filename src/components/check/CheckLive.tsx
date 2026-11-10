@@ -1,10 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { STEP_LABELS, type CheckView, type StepKey, type StepState } from "@/lib/check/types";
 import type { Identification, ShopCandidate } from "@/lib/identify";
 import { Tier1ScoreCard } from "./ScoreCard";
+import { ChatBox } from "./ChatBox";
 import { Tier2ScoreCard } from "./Tier2Card";
+import { WhereToBuy } from "./WhereToBuy";
 
 const METHOD_LABEL: Record<Identification["method"], string> = {
   own_shop_page: "Matched from the shop link",
@@ -36,36 +39,65 @@ export function CheckLive({ initial }: { initial: CheckView }) {
   }, [view, initial.id, refresh]);
 
   const working = view.status === "pending" || view.status === "running";
+  const done = view.status === "done";
   const idn = view.result.identification;
+
+  const steps = (
+    <ol className="mt-4 space-y-3">
+      {(Object.keys(STEP_LABELS) as StepKey[]).map((k) => (
+        <StepRow key={k} label={STEP_LABELS[k]} state={view.result.steps[k]} />
+      ))}
+    </ol>
+  );
 
   return (
     <div className="mt-6 space-y-4">
-      {/* Verdict first */}
-      {view.result.tier1 && <Tier1ScoreCard tier1={view.result.tier1} />}
-      {view.result.tier2 && <Tier2ScoreCard score={view.result.tier2} result={view.result} />}
-
-      <section className="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
-        <p className="text-sm text-slate-500">{view.source === "screenshot" ? "Checking your screenshot" : "Checking"}</p>
-        {view.input_url && <p className="mt-1 break-all font-mono text-sm">{view.input_url}</p>}
-        {working && <p className="mt-3 font-semibold text-slate-900">Checking with PayPal…</p>}
-        <ol className="mt-4 space-y-3">
-          {(Object.keys(STEP_LABELS) as StepKey[]).map((k) => (
-            <StepRow key={k} label={STEP_LABELS[k]} state={view.result.steps[k]} />
-          ))}
-        </ol>
-      </section>
+      {/* While running: live progress */}
+      {!done && (
+        <section className="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+          <p className="text-sm text-slate-500">{view.source === "screenshot" ? "Checking your screenshot" : "Checking"}</p>
+          {view.input_url && <p className="mt-1 break-all font-mono text-sm">{view.input_url}</p>}
+          {working && (
+            <p className="mt-3 flex items-center gap-2 font-semibold text-slate-900">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+              Checking with PayPal…
+            </p>
+          )}
+          {steps}
+        </section>
+      )}
 
       {view.status === "needs_confirmation" && idn && <ConfirmShop id={view.id} idn={idn} onDone={setView} />}
 
-      {idn && view.status !== "needs_confirmation" && idn.shop_name && <ShopCard idn={idn} />}
-
       {view.status === "error" && (
         <p className="rounded-2xl bg-rose-50 p-4 text-sm text-rose-800 ring-1 ring-rose-200">
-          Something went wrong: {view.result.error ?? "unknown error"}.
+          Something went wrong: {view.result.error ?? "unknown error"}. <Link href="/" className="underline">Try another check</Link>
         </p>
       )}
 
-
+      {/* Finished: verdict first, then where to buy, then questions, then how we checked */}
+      {done && (
+        <>
+          {view.result.tier1 && <Tier1ScoreCard tier1={view.result.tier1} result={view.result} />}
+          {view.result.tier2 && <Tier2ScoreCard score={view.result.tier2} result={view.result} />}
+          {idn?.shop_name && (
+            <p className="px-1 text-sm text-slate-500">
+              {idn.shop_name}
+              {idn.product ? ` · ${idn.product}` : ""}
+              {idn.price ? ` · ${idn.price}` : ""} · {METHOD_LABEL[idn.method]}
+              {idn.confidence < 1 ? ` (${Math.round(idn.confidence * 100)}% sure)` : ""}
+            </p>
+          )}
+          <WhereToBuy id={view.id} result={view.result} />
+          <ChatBox id={view.id} suggestions={view.suggested_questions} />
+          <details className="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+            <summary className="cursor-pointer font-medium text-slate-700">How we checked</summary>
+            {view.input_url && <p className="mt-3 break-all font-mono text-xs text-slate-500">{view.input_url}</p>}
+            {steps}
+            {idn && <ShopCard idn={idn} />}
+          </details>
+        </>
+      )}
     </div>
   );
 }
@@ -97,7 +129,7 @@ function StepRow({ label, state }: { label: string; state: StepState }) {
 
 function ShopCard({ idn }: { idn: Identification }) {
   return (
-    <section className="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+    <section className="mt-4 border-t border-slate-200 pt-4">
       <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Shop</p>
       <p className="mt-1 text-xl font-semibold">{idn.shop_name}</p>
       {idn.shop_domain && <p className="text-sm text-slate-500">{idn.shop_domain}</p>}

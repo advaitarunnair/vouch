@@ -1,6 +1,7 @@
 "use client";
 
-import type { Tier1Result } from "@/lib/check/types";
+import type { CheckResult, Tier1Result } from "@/lib/check/types";
+import { SignalsDetails } from "./SignalsDetails";
 import type { TrustLabel } from "@/lib/score/tier1";
 
 const LABEL_STYLE: Record<TrustLabel, { ring: string; text: string; bg: string; bar: string }> = {
@@ -18,7 +19,7 @@ function timeAgo(iso: string): string {
   return `${Math.round(mins / 60)} h ago`;
 }
 
-export function Tier1ScoreCard({ tier1 }: { tier1: Tier1Result }) {
+export function Tier1ScoreCard({ tier1, result }: { tier1: Tier1Result; result: CheckResult }) {
   const { score, features: f, sources } = tier1;
   const style = LABEL_STYLE[score.label];
   const TS = "PayPal Transaction Search API";
@@ -107,6 +108,12 @@ export function Tier1ScoreCard({ tier1 }: { tier1: Tier1Result }) {
           {score.model.draws.toLocaleString()} simulations. Read live from the shop&apos;s PayPal sandbox account ({sources.apiCalls} API
           calls, {sources.transactionsScanned} transactions).
         </p>
+        <div className="mt-4 border-t border-slate-200 pt-3">
+          <p className="font-medium text-slate-700">Other signals (not part of this score)</p>
+          <div className="mt-1">
+            <SignalsDetails result={result} />
+          </div>
+        </div>
       </details>
     </section>
   );

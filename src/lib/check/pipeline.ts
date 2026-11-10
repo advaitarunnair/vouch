@@ -5,6 +5,7 @@ import { CONFIDENCE_THRESHOLD, identifyFromScreenshot, identifyFromUrl } from "@
 import { getPayPalHistory } from "@/lib/paypal/history";
 import { computeTier1 } from "@/lib/score/tier1";
 import { registryBySlug, shopCredentials } from "@/lib/shopRegistry";
+import { suggestedQuestions } from "@/lib/ai/chat";
 import { marketQueryFor } from "@/lib/ai/marketQuery";
 import { scanPage } from "@/lib/ai/pageScan";
 import { domainAge } from "@/lib/rdap";
@@ -30,6 +31,7 @@ export function toView(row: CheckRow): CheckView {
     created_at: row.created_at,
     updated_at: row.updated_at,
     result: readResult(row),
+    suggested_questions: row.status === "done" ? suggestedQuestions(readResult(row)) : [],
   };
 }
 

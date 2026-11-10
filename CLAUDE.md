@@ -153,3 +153,14 @@ Optional (only if all above works): web push on check completion; seller page wi
   <45 "High risk" (never "scam").
 - Live: FlashDeal scan finds 7 verified warning signs; Aurora 4 good signs; example.com Tier 2 = 67 [40–85] Unverified.
 - Avoid bash heredocs containing JS `${...}` templates: Claude Code's safety parser rejects them. Use Write/Edit for script files.
+
+## Result page (Phase 7)
+- `/check/[id]` (`CheckLive.tsx`): while running → live steps ("Checking with PayPal…"); done → verdict card (Tier1/Tier2,
+  breakdown incl. shared `SignalsDetails`), shop line, `WhereToBuy`, `ChatBox`, collapsible "How we checked".
+- Alternatives: `GET /api/check/[id]/alternatives` (fetched at display time) → `src/lib/alternatives.ts` (Channel3 search +
+  RDAP age per retailer) → `rankAlternatives()` (pure, tested): excludes the checked shop, offers < 25% of median, domains < 1y;
+  greedy pick by trust then price, one per product and per retailer. Text-only cards (no third-party images/logos).
+  Trusted/caution shops are shown first in "Where to buy"; high-risk shops get a warning + "Safer places to buy this".
+- Chatbot: `POST /api/check/[id]/chat` → `src/lib/ai/chat.ts`: check data + page text (untrusted) only; structured
+  `{answer, grounded, sources}`; ungrounded → exactly "I don't know from the data I have."; ≤10 questions per check;
+  3 suggested questions in `CheckView.suggested_questions`.

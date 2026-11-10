@@ -86,4 +86,6 @@ export interface CheckView {
   created_at: string;
   updated_at: string;
   result: CheckResult;
+  /** Starter questions for the grounded chatbot (finished checks only). */
+  suggested_questions: string[];
 }
