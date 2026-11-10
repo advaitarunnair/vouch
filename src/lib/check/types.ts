@@ -1,6 +1,7 @@
 // Shape of checks.result_json, shared by the server pipeline and the result page.
 import type { Identification } from "@/lib/identify";
 import type { PayPalHistory } from "@/lib/paypal/history";
+import type { MarketOffer, PriceCheck } from "@/lib/priceCheck";
 import type { PayPalFeatures, Tier1Score } from "@/lib/score/tier1";
 
 export type StepKey = "identify" | "paypal" | "page" | "price";
@@ -38,6 +39,12 @@ export interface CheckResult {
   /** Which score applies: 1 = verified by PayPal payments, 2 = public signals only (Phase 6). */
   tier?: 1 | 2;
   tier1?: Tier1Result;
+  price?: {
+    query: string;
+    check: PriceCheck;
+    alternatives: MarketOffer[];
+    fetched_at: string;
+  };
   error?: string;
 }
 

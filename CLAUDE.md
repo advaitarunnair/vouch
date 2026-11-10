@@ -127,3 +127,14 @@ Optional (only if all above works): web push on check completion; seller page wi
   score = 100·sigmoid; 5,000 seeded Monte Carlo draws → 5th–95th percentile range. Labels: ≥75 Trusted, 50–74 Use caution, <50 High risk.
 - Live sandbox (Nov 10): Aurora 92 [84–96], Glowbox 72 [48–86], FlashDeal 25 [9–51] before disputes settled.
 - `npm test` runs vitest.
+
+## Channel3 (price check + alternatives)
+- Skill installed at `.claude/skills/channel3-api` (gitignored; `skills-lock.json` records it). SDK `@channel3/sdk` 4.x:
+  `new Channel3({ apiKey, maxRetries, timeoutInSeconds })`, `client.products.search({ query, limit, filters, config })` → `page.data`
+  (`Product.offers[]`: `price.price`, `price.currency`, `domain`, `url`, `availability`). Search ≈1.5–2.5s. Server-side only.
+- `src/lib/channel3.ts` `searchMarket()` (30-min cache; offer URLs are short-lived, refetch at display time).
+- `src/lib/ai/marketQuery.ts`: Claude writes a generic, brand-free query from product name + page claims (fictional names
+  otherwise match the wrong products). `src/lib/priceCheck.ts` (unit-tested): one price per product, median of ≥3 USD comparables;
+  <25% of median = `far_below` (warning sign), <60% `below`, >150% `above`.
+- Live: Aurora $48 vs $130 (below), Glowbox $69 vs $140 (below), FlashDeal $12.99 vs $94 (far_below, 86% under).
+- `npx tsx scripts/demo-checks.mts` runs the three demo checks against the dev server and prints every step.

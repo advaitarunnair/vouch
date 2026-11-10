@@ -5,6 +5,9 @@ import { CONFIDENCE_THRESHOLD, identifyFromScreenshot, identifyFromUrl } from "@
 import { getPayPalHistory } from "@/lib/paypal/history";
 import { computeTier1 } from "@/lib/score/tier1";
 import { registryBySlug, shopCredentials } from "@/lib/shopRegistry";
+import { marketQueryFor } from "@/lib/ai/marketQuery";
+import { channel3Configured, searchMarket } from "@/lib/channel3";
+import { comparePrice, parsePrice, type MarketOffer } from "@/lib/priceCheck";
 import { emptyResult, type CheckResult, type CheckView, type StepKey } from "./types";
 
 // Runs a check's steps in order, saving progress after each one so the result
@@ -129,8 +132,38 @@ export async function runCheck(id: string): Promise<void> {
       result.steps.paypal = { status: "skipped", note: "No PayPal history for this shop: public signals only" };
     }
 
-    // 3-4. Page scan and price check arrive in Phase 6.
-    for (const key of ["page", "price"] as const) {
+    // 4. Price check against the wider market (Channel3). Informational for Tier 1, a signal for Tier 2.
+    const idn = result.identification!;
+    const product = idn.product ?? result.page?.title ?? null;
+    if (product && channel3Configured()) {
+      await step(id, result, "price", async () => {
+        const { query } = await marketQueryFor({
+          product,
+          title: result.page?.title,
+          description: result.page?.description,
+          pageText: result.page?.text,
+        });
+        const market = await searchMarket(query);
+        const shopHost = idn.shop_domain?.replace(/^www\./, "");
+        const check = comparePrice(parsePrice(idn.price), market.offers);
+        result.price = {
+          query,
+          check,
+          // Kept for "safer alternatives": in-stock offers from other merchants, one per product.
+          alternatives: dedupeByProduct(market.offers.filter((o) => !shopHost || !o.domain.endsWith(shopHost))).slice(0, 8),
+          fetched_at: market.fetched_at,
+        };
+        result.steps.price.note =
+          check.market_median !== null ? `Typical price ${check.market_median.toFixed(2)} ${check.currency} (${check.comparables} compared)` : check.text;
+      }).catch(() => {
+        // Price data is optional: keep going without it.
+      });
+    } else {
+      result.steps.price = { status: "skipped", note: product ? "Price comparison unavailable" : "No product to compare" };
+    }
+
+    // 3. Page scan arrives in Phase 6.
+    for (const key of ["page"] as const) {
       if (result.steps[key].status === "pending") result.steps[key] = { status: "skipped", note: "Coming in a later phase" };
     }
     updateCheck(id, { status: "done", result });
@@ -138,4 +171,13 @@ export async function runCheck(id: string): Promise<void> {
     result.error = err instanceof Error ? err.message : String(err);
     updateCheck(id, { status: "error", result });
   }
+}
+
+function dedupeByProduct(offers: MarketOffer[]): MarketOffer[] {
+  const best = new Map<string, MarketOffer>();
+  for (const o of offers) {
+    const prev = best.get(o.product_id);
+    if (!prev || o.price < prev.price) best.set(o.product_id, o);
+  }
+  return [...best.values()];
 }

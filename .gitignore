@@ -55,3 +55,6 @@ scripts/.seed-state.json
 
 # local secrets (also covered by .env* above)
 .env.local
+
+# Third-party agent skills: restore with `npx skills experimental_install` (see skills-lock.json)
+.claude/skills/
