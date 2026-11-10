@@ -8,6 +8,7 @@
  *   npm run seed -- wallet --shop flashdeal --count 4   # PayPal-wallet orders for manual approval (disputes)
  *   npm run seed -- capture-wallet --shop flashdeal     # capture the wallet orders you approved
  *   npm run seed -- disputes --shop flashdeal [--settle BUYER_FAVOR|SELLER_FAVOR]
+ *   npm run seed -- disputes --shop flashdeal --accept <dispute_id> | --accept-all   # seller accepts the claim(s)
  *   npm run seed -- check                         # credentials, Transaction Search access, separate accounts
  *   npm run seed -- summary                       # what Transaction Search + Disputes return right now
  *
@@ -25,7 +26,7 @@
 import { config as loadEnv } from "dotenv";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { PayPalError, paypalRequest, type PayPalCredentials } from "../src/lib/paypal/client";
+import { PayPalError, getAccessToken, paypalBaseUrl, paypalRequest, type PayPalCredentials } from "../src/lib/paypal/client";
 import { SHOP_REGISTRY, registryByKey, shopCredentials, type RegistryEntry, type ShopKey } from "../src/lib/shopRegistry";
 import { getShop } from "../src/lib/shops";
 
@@ -388,6 +389,7 @@ interface DisputeSummary {
 }
 interface DisputeDetail extends DisputeSummary {
   dispute_outcome?: { outcome_code?: string };
+  allowed_response_options?: { accept_claim?: { accept_claim_types?: string[] } };
 }
 
 async function listDisputes(creds: PayPalCredentials): Promise<DisputeSummary[]> {
@@ -410,6 +412,8 @@ async function listDisputes(creds: PayPalCredentials): Promise<DisputeSummary[]>
 
 async function disputes() {
   const settle = opt("settle") as "BUYER_FAVOR" | "SELLER_FAVOR" | undefined;
+  const acceptOne = opt("accept");
+  const acceptAll = flag("accept-all");
   if (settle && settle !== "BUYER_FAVOR" && settle !== "SELLER_FAVOR") throw new Error("--settle must be BUYER_FAVOR or SELLER_FAVOR");
   for (const entry of selectedShops()) {
     const creds = credsOrExit(entry);
@@ -420,7 +424,22 @@ async function disputes() {
       console.log(
         `  ${d.dispute_id} ${detail.status} ${detail.dispute_life_cycle_stage ?? ""} ${detail.reason ?? ""} outcome=${detail.dispute_outcome?.outcome_code ?? "-"} actions=[${(detail.links ?? []).map((l) => l.rel).filter((r) => r !== "self").join(",")}]`,
       );
-      if (!settle || detail.status === "RESOLVED") continue;
+      if (detail.status === "RESOLVED") continue;
+      if (acceptOne && acceptOne !== d.dispute_id) continue;
+      if (acceptOne === d.dispute_id || acceptAll) {
+        if (!detail.links?.some((l) => l.rel === "accept_claim")) {
+          console.log("    ↳ accept_claim not offered for this dispute yet");
+          continue;
+        }
+        const types = detail.allowed_response_options?.accept_claim?.accept_claim_types ?? [];
+        const body: Record<string, string> = { note: "FlashDeal Outlet accepts this claim (Vouch sandbox demo data)." };
+        if (types.includes("REFUND")) body.accept_claim_type = "REFUND";
+        await paypalRequest(creds, `/v1/customer/disputes/${d.dispute_id}/accept-claim`, { method: "POST", body, retries: 0 });
+        console.log(`    ↳ seller accepted the claim (allowed types: ${types.join(",") || "none listed"})`);
+        if (acceptOne === d.dispute_id) return;
+        continue;
+      }
+      if (!settle) continue;
       const has = (rel: string) => detail.links?.some((l) => l.rel === rel);
       if (has("escalate")) {
         await paypalRequest(creds, `/v1/customer/disputes/${d.dispute_id}/escalate`, {
@@ -428,6 +447,12 @@ async function disputes() {
           body: { note: "Escalated by the Vouch sandbox seed script for demo data." },
         });
         console.log("    ↳ escalated to claim");
+        detail = await paypalRequest<DisputeDetail>(creds, `/v1/customer/disputes/${d.dispute_id}`);
+      }
+      // A claim waiting on the seller must get a seller response before PayPal reviews it.
+      if (detail.status === "WAITING_FOR_SELLER_RESPONSE" && detail.links?.some((l) => l.rel === "provide_evidence")) {
+        await provideSellerNote(creds, d.dispute_id);
+        console.log("    ↳ seller response submitted");
         detail = await paypalRequest<DisputeDetail>(creds, `/v1/customer/disputes/${d.dispute_id}`);
       }
       if (has("adjudicate") || detail.links?.some((l) => l.rel === "adjudicate")) {
@@ -441,6 +466,22 @@ async function disputes() {
       }
     }
   }
+}
+
+/**
+ * POST provide-evidence as multipart/form-data with the evidence JSON in an "input" part
+ * (the request body is multipart per the Disputes v1 spec; evidence goes in the JSON part).
+ */
+async function provideSellerNote(creds: PayPalCredentials, disputeId: string) {
+  const form = new FormData();
+  const input = { evidences: [{ evidence_type: "OTHER", notes: "Seller response (Vouch sandbox demo data): the item was dispatched." }] };
+  form.append("input", new Blob([JSON.stringify(input)], { type: "application/json" }), "input.json");
+  const res = await fetch(`${paypalBaseUrl()}/v1/customer/disputes/${disputeId}/provide-evidence`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${await getAccessToken(creds)}` },
+    body: form,
+  });
+  if (!res.ok) throw new PayPalError(`provide-evidence failed (${res.status})`, res.status, await res.json().catch(() => ({})), res.headers.get("paypal-debug-id") ?? undefined);
 }
 
 interface TxnDetail {

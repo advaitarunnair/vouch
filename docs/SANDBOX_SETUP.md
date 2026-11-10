@@ -90,9 +90,14 @@ payment made **from the sandbox personal account**:
    first escalates any `INQUIRY` disputes to a claim:
    ```bash
    npm run seed -- disputes --shop flashdeal                      # list
-   npm run seed -- disputes --shop flashdeal --settle BUYER_FAVOR # escalate + adjudicate
+   npm run seed -- disputes --shop flashdeal --settle BUYER_FAVOR # escalate, seller response, adjudicate
    ```
-   If a dispute isn't ready yet, run it again a few minutes later.
+   Each run moves every dispute one step: INQUIRY disputes are escalated to a claim; claims waiting on the
+   seller get a short seller response (`provide-evidence`, multipart with an `input` JSON part), which moves
+   them to `UNDER_REVIEW`; once PayPal offers the `adjudicate` action, they are settled. The sandbox processes
+   each step in the background, so re-run every few minutes until all show `RESOLVED`.
+   (`--accept <id>` / `--accept-all` makes the seller accept a claim instead; in testing the sandbox rejected
+   this with `INSUFFICIENT_FUNDS` at the chargeback stage despite a positive balance.)
 
 PayPal's dispute testing guide also lets you create a buyer transaction with **Send and Request → Send money**
 to the shop's business email, then dispute that payment.
