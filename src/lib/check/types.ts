@@ -88,4 +88,6 @@ export interface CheckView {
   result: CheckResult;
   /** Starter questions for the grounded chatbot (finished checks only). */
   suggested_questions: string[];
+  /** PayPal checkout availability (passing Tier 1 shops only). clientId is the shop's public REST client ID. */
+  checkout: { eligible: true; clientId: string; amount: string; currency: string; label: string } | { eligible: false; reason: string };
 }

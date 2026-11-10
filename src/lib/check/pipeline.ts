@@ -6,6 +6,7 @@ import { getPayPalHistory } from "@/lib/paypal/history";
 import { computeTier1 } from "@/lib/score/tier1";
 import { registryBySlug, shopCredentials } from "@/lib/shopRegistry";
 import { suggestedQuestions } from "@/lib/ai/chat";
+import { checkoutEligibility } from "@/lib/checkout";
 import { marketQueryFor } from "@/lib/ai/marketQuery";
 import { scanPage } from "@/lib/ai/pageScan";
 import { domainAge } from "@/lib/rdap";
@@ -21,6 +22,12 @@ export function readResult(row: CheckRow): CheckResult {
   return row.result_json ? (JSON.parse(row.result_json) as CheckResult) : emptyResult();
 }
 
+function checkoutView(row: CheckRow): CheckView["checkout"] {
+  if (row.status !== "done") return { eligible: false, reason: "Check not finished" };
+  const e = checkoutEligibility(readResult(row));
+  return e.eligible ? { eligible: true, clientId: e.clientId, amount: e.amount, currency: e.currency, label: e.label } : e;
+}
+
 export function toView(row: CheckRow): CheckView {
   return {
     id: row.id,
@@ -32,6 +39,7 @@ export function toView(row: CheckRow): CheckView {
     updated_at: row.updated_at,
     result: readResult(row),
     suggested_questions: row.status === "done" ? suggestedQuestions(readResult(row)) : [],
+    checkout: checkoutView(row),
   };
 }
 

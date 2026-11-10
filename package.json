@@ -14,6 +14,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
     "@channel3/sdk": "^4.9.0",
+    "@paypal/paypal-js": "^11.3.0",
     "better-sqlite3": "^11.10.0",
     "next": "15.5.29",
     "react": "19.1.0",

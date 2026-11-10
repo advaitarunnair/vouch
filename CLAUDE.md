@@ -164,3 +164,18 @@ Optional (only if all above works): web push on check completion; seller page wi
 - Chatbot: `POST /api/check/[id]/chat` → `src/lib/ai/chat.ts`: check data + page text (untrusted) only; structured
   `{answer, grounded, sources}`; ungrounded → exactly "I don't know from the data I have."; ≤10 questions per check;
   3 suggested questions in `CheckView.suggested_questions`.
+
+## PayPal checkout (Phase 8)
+- PayPal JS SDK **v6** (what `developer.paypal.com/sdk/js/reference` documents now), via official `@paypal/paypal-js/sdk-v6`:
+  `loadCoreSdkScript({environment:"sandbox"})` → `createInstance({clientId, components:["paypal-payments","paypal-messages"],
+  pageType, testBuyerCountry:"US"})` → `findEligibleMethods({currencyCode, amount})` → `<paypal-button>` /
+  `<paypal-pay-later-button>` + `createPayPalOneTimePaymentSession` / `createPayLaterOneTimePaymentSession`;
+  click → `session.start({presentationMode:"auto"}, createOrder())` (NOT awaited; promise resolves to `{orderId}`).
+- Pay Later messaging: `<paypal-message>` + `createPayPalMessages().fetchContent({..., onContentReady: c => el.setContent(c)})`
+  (`setContent` exists at runtime but not in the published types; autoBootstrap alone rendered nothing).
+- Client ID = the checked shop's own sandbox REST client ID (public), so orders are paid to that shop.
+- Server (`src/lib/checkout.ts`): eligibility = Tier 1 and score ≥ 70 (`PASSING_SCORE`); price from `shops.ts`, never the
+  browser; Orders v2 create (items + breakdown, NO_SHIPPING, PAY_NOW) and capture with the shop's credentials; `orders` table;
+  INSTRUMENT_DECLINED handled. Routes: `POST /api/checkout/orders`, `POST /api/checkout/orders/[orderId]/capture`.
+- `/checkout/success/[orderId]` shows stored details and confirms status live via `GET /v2/checkout/orders/{id}`.
+- Popups opened by automated clicks are blocked in the in-app browser: a human must click "Pay with PayPal" to approve.

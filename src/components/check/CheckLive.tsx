@@ -6,6 +6,7 @@ import { STEP_LABELS, type CheckView, type StepKey, type StepState } from "@/lib
 import type { Identification, ShopCandidate } from "@/lib/identify";
 import { Tier1ScoreCard } from "./ScoreCard";
 import { ChatBox } from "./ChatBox";
+import { PayPalCheckout } from "./PayPalCheckout";
 import { Tier2ScoreCard } from "./Tier2Card";
 import { WhereToBuy } from "./WhereToBuy";
 
@@ -88,7 +89,17 @@ export function CheckLive({ initial }: { initial: CheckView }) {
               {idn.confidence < 1 ? ` (${Math.round(idn.confidence * 100)}% sure)` : ""}
             </p>
           )}
-          <WhereToBuy id={view.id} result={view.result} />
+          <WhereToBuy
+            id={view.id}
+            result={view.result}
+            checkout={
+              view.checkout.eligible ? (
+                <PayPalCheckout checkId={view.id} clientId={view.checkout.clientId} amount={view.checkout.amount} currency={view.checkout.currency} />
+              ) : (
+                <p className="mt-3 text-xs text-slate-500">{view.checkout.reason}</p>
+              )
+            }
+          />
           <ChatBox id={view.id} suggestions={view.suggested_questions} />
           <details className="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
             <summary className="cursor-pointer font-medium text-slate-700">How we checked</summary>
