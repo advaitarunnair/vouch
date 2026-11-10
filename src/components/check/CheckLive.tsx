@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { STEP_LABELS, type CheckView, type StepKey, type StepState } from "@/lib/check/types";
 import type { Identification, ShopCandidate } from "@/lib/identify";
 import { Tier1ScoreCard } from "./ScoreCard";
+import { Tier2ScoreCard } from "./Tier2Card";
 
 const METHOD_LABEL: Record<Identification["method"], string> = {
   own_shop_page: "Matched from the shop link",
@@ -41,6 +42,7 @@ export function CheckLive({ initial }: { initial: CheckView }) {
     <div className="mt-6 space-y-4">
       {/* Verdict first */}
       {view.result.tier1 && <Tier1ScoreCard tier1={view.result.tier1} />}
+      {view.result.tier2 && <Tier2ScoreCard score={view.result.tier2} result={view.result} />}
 
       <section className="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
         <p className="text-sm text-slate-500">{view.source === "screenshot" ? "Checking your screenshot" : "Checking"}</p>
@@ -63,11 +65,7 @@ export function CheckLive({ initial }: { initial: CheckView }) {
         </p>
       )}
 
-      {view.status === "done" && view.result.tier === 2 && (
-        <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-800 ring-1 ring-amber-200">
-          No PayPal payment history for this shop. The public-signals score is added in Phase 6.
-        </p>
-      )}
+
     </div>
   );
 }

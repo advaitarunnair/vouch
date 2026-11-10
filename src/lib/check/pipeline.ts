@@ -6,6 +6,9 @@ import { getPayPalHistory } from "@/lib/paypal/history";
 import { computeTier1 } from "@/lib/score/tier1";
 import { registryBySlug, shopCredentials } from "@/lib/shopRegistry";
 import { marketQueryFor } from "@/lib/ai/marketQuery";
+import { scanPage } from "@/lib/ai/pageScan";
+import { domainAge } from "@/lib/rdap";
+import { computeTier2 } from "@/lib/score/tier2";
 import { channel3Configured, searchMarket } from "@/lib/channel3";
 import { comparePrice, parsePrice, type MarketOffer } from "@/lib/priceCheck";
 import { emptyResult, type CheckResult, type CheckView, type StepKey } from "./types";
@@ -132,6 +135,37 @@ export async function runCheck(id: string): Promise<void> {
       result.steps.paypal = { status: "skipped", note: "No PayPal history for this shop: public signals only" };
     }
 
+    // 3. Shop page scan (Claude, verified quotes) plus domain age (RDAP) and HTTPS.
+    {
+      const idn0 = result.identification!;
+      const pageUrl = result.page?.url ?? idn0.page_url;
+      const hosted = !!pageUrl && new URL(pageUrl).origin === new URL(appOrigin()).origin;
+      const host = hosted ? null : (idn0.shop_domain ?? (pageUrl ? new URL(pageUrl).hostname : null));
+      if (result.page || host) {
+        await step(id, result, "page", async () => {
+          const [scanRes, age] = await Promise.all([
+            result.page ? scanPage({ url: result.page.url, title: result.page.title, text: result.page.text }) : Promise.resolve(null),
+            host && !idn0.registry_slug ? domainAge(host) : Promise.resolve(null),
+          ]);
+          result.signals = {
+            hosted,
+            https: hosted || !result.page ? null : result.page.https,
+            domain: age,
+            scan: scanRes?.scan ?? null,
+            scan_error: scanRes?.error,
+          };
+          const risks = scanRes?.scan?.risks.length ?? 0;
+          const notes = [
+            scanRes?.scan ? `${risks} warning sign${risks === 1 ? "" : "s"}, ${scanRes.scan.positives.length} good sign${scanRes.scan.positives.length === 1 ? "" : "s"}` : scanRes ? "Page scan unavailable" : "No page to scan",
+            age?.age_days != null ? `domain ${Math.floor(age.age_days / 365)}y old` : null,
+          ].filter(Boolean);
+          result.steps.page.note = notes.join(", ");
+        }).catch(() => {});
+      } else {
+        result.steps.page = { status: "skipped", note: "No shop page to scan" };
+      }
+    }
+
     // 4. Price check against the wider market (Channel3). Informational for Tier 1, a signal for Tier 2.
     const idn = result.identification!;
     const product = idn.product ?? result.page?.title ?? null;
@@ -162,9 +196,20 @@ export async function runCheck(id: string): Promise<void> {
       result.steps.price = { status: "skipped", note: product ? "Price comparison unavailable" : "No product to compare" };
     }
 
-    // 3. Page scan arrives in Phase 6.
-    for (const key of ["page"] as const) {
-      if (result.steps[key].status === "pending") result.steps[key] = { status: "skipped", note: "Coming in a later phase" };
+    // Tier 2: no usable PayPal history, so score from public signals only.
+    if (result.tier !== 1) {
+      result.tier = 2;
+      result.tier2 = computeTier2(
+        {
+          domainAgeDays: result.signals?.domain?.age_days ?? null,
+          domain: result.signals?.domain?.domain ?? null,
+          https: result.signals?.https ?? null,
+          scan: result.signals?.scan ?? null,
+          priceVerdict: result.price?.check.verdict ?? null,
+          priceText: result.price?.check.text ?? null,
+        },
+        result.identification?.shop_domain ?? id,
+      );
     }
     updateCheck(id, { status: "done", result });
   } catch (err) {

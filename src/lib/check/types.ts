@@ -1,7 +1,10 @@
 // Shape of checks.result_json, shared by the server pipeline and the result page.
 import type { Identification } from "@/lib/identify";
 import type { PayPalHistory } from "@/lib/paypal/history";
+import type { PageScan } from "@/lib/pageScanTypes";
 import type { MarketOffer, PriceCheck } from "@/lib/priceCheck";
+import type { DomainAge } from "@/lib/rdap";
+import type { Tier2Score } from "@/lib/score/tier2";
 import type { PayPalFeatures, Tier1Score } from "@/lib/score/tier1";
 
 export type StepKey = "identify" | "paypal" | "page" | "price";
@@ -45,6 +48,15 @@ export interface CheckResult {
     alternatives: MarketOffer[];
     fetched_at: string;
   };
+  /** Public signals: page scan, domain age, HTTPS (used by Tier 2, shown for every shop). */
+  signals?: {
+    hosted: boolean;
+    https: boolean | null;
+    domain: DomainAge | null;
+    scan: PageScan | null;
+    scan_error?: string;
+  };
+  tier2?: Tier2Score;
   error?: string;
 }
 

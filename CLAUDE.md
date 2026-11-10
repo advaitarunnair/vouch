@@ -138,3 +138,18 @@ Optional (only if all above works): web push on check completion; seller page wi
   <25% of median = `far_below` (warning sign), <60% `below`, >150% `above`.
 - Live: Aurora $48 vs $130 (below), Glowbox $69 vs $140 (below), FlashDeal $12.99 vs $94 (far_below, 86% under).
 - `npx tsx scripts/demo-checks.mts` runs the three demo checks against the dev server and prints every step.
+
+## Tier 2 / public signals (Phase 6)
+- Pipeline order: identify → paypal → page (Claude scan + RDAP + HTTPS) → price (Channel3) → Tier 2 score when no PayPal history.
+  Page scan + price run for every shop (informational for Tier 1). Results in `result.signals`, `result.price`, `result.tier2`.
+- RDAP (`src/lib/rdap.ts`): IANA bootstrap `data.iana.org/rdap/dns.json` → registry server (rdap.org returns 403 to Node fetch).
+  Skipped for hosted demo pages and registry shops. Cached 24h.
+- Page scan (`src/lib/ai/pageScan.ts`): page text treated as untrusted data; risks (fake_countdown, extreme_discount,
+  missing_contact, vague_returns, pressure_tactics, unrealistic_claims, other) + positives; every quote verified against page
+  text (`src/lib/pageScanTypes.ts`), invented quotes dropped and severity lowered.
+- Tier 2 model (`src/lib/score/tier2.ts`, unit-tested): logit = 0.2 + domain-age term + HTTPS (−1.2/+0.1) + risks (high −1.2,
+  medium −0.6, low −0.2, capped −3) + positives (+0.35 each, cap +1) + price (far_below −1.5, typical +0.2); capped at 85;
+  2,000 draws with ±35% weight noise and 0.6 logit noise → wide range. Labels: ≥70 "Likely OK (unverified)", 45–69 "Unverified",
+  <45 "High risk" (never "scam").
+- Live: FlashDeal scan finds 7 verified warning signs; Aurora 4 good signs; example.com Tier 2 = 67 [40–85] Unverified.
+- Avoid bash heredocs containing JS `${...}` templates: Claude Code's safety parser rejects them. Use Write/Edit for script files.
