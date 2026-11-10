@@ -8,6 +8,7 @@
  *   npm run seed -- wallet --shop flashdeal --count 4   # PayPal-wallet orders for manual approval (disputes)
  *   npm run seed -- capture-wallet --shop flashdeal     # capture the wallet orders you approved
  *   npm run seed -- disputes --shop flashdeal [--settle BUYER_FAVOR|SELLER_FAVOR]
+ *   npm run seed -- check                         # credentials, Transaction Search access, separate accounts
  *   npm run seed -- summary                       # what Transaction Search + Disputes return right now
  *
  * APIs (sandbox only), checked against PayPal's OpenAPI specs:
@@ -453,6 +454,43 @@ interface TxnDetail {
   };
 }
 
+/** Pre-flight: each shop's app can log in and use Transaction Search, and the shops are separate accounts. */
+async function check() {
+  const end = new Date();
+  const start = new Date(end.getTime() - 86400_000);
+  const iso = (d: Date) => d.toISOString().replace(/\.\d{3}Z$/, "Z");
+  const accounts = new Map<string, string>();
+  const clientIds = new Set<string>();
+  let ok = true;
+  for (const entry of selectedShops()) {
+    const creds = shopCredentials(entry);
+    if (!creds) {
+      console.log(`✗ ${entry.key}: no credentials configured`);
+      ok = false;
+      continue;
+    }
+    clientIds.add(creds.clientId);
+    try {
+      const res = await paypalRequest<{ account_number?: string; total_items?: number }>(creds, "/v1/reporting/transactions", {
+        query: { start_date: iso(start), end_date: iso(end), page_size: 1 },
+        retries: 0,
+      });
+      accounts.set(entry.key, res.account_number ?? "?");
+      console.log(`✓ ${entry.key}: login ok, Transaction Search ok (${res.total_items ?? 0} transactions in last 24h)`);
+    } catch (err) {
+      ok = false;
+      console.log(`✗ ${entry.key}: ${explain(err)}`);
+    }
+  }
+  const distinctAccounts = new Set(accounts.values()).size;
+  console.log(`\nDistinct apps: ${clientIds.size}; distinct merchant accounts: ${distinctAccounts}/${accounts.size}`);
+  if (distinctAccounts < accounts.size) {
+    ok = false;
+    console.log("✗ Two shops share one sandbox business account, so their payment histories would mix. Give each shop its own account.");
+  }
+  if (!ok) process.exitCode = 1;
+}
+
 async function summary() {
   const end = new Date();
   const start = new Date(end.getTime() - 30 * 86400_000);
@@ -495,6 +533,7 @@ async function summary() {
 
 const COMMANDS: Record<string, () => Promise<void>> = {
   seed,
+  check,
   wallet,
   "capture-wallet": captureWallet,
   disputes,

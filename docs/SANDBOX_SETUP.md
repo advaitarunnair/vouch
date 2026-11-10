@@ -42,6 +42,7 @@ and keep `PAYPAL_ENV=sandbox` (the code refuses any other value).
 ## 4. Seed payment history
 
 ```bash
+npm run seed -- check            # each app logs in, has Transaction Search, and is a separate account
 npm run seed -- seed --dry-run   # print the plan; makes no API calls
 npm run seed                     # create + capture orders, then refund a subset
 ```
