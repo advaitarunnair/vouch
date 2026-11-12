@@ -10,7 +10,7 @@ PayPal checkout with Pay Later; risky shops get safer places to buy the same thi
 
 Built for the PayPal AI Hackathon.
 
-- **Live demo:** _HOSTED_URL_ (see [Try it](#try-it-judges))
+- **Live demo:** https://vouch-6ilp.onrender.com (see [Try it](#try-it-judges))
 - **Licence:** MIT
 
 ---
@@ -32,13 +32,15 @@ All shops in the demo are fictional and hosted by Vouch. Their PayPal history is
 
 | Demo | What you'll see |
 |---|---|
-| _HOSTED_URL_/share?from=demo&url=%2Fshops%2Faurora-threads | **Trusted, 92**: half the buyers came back; PayPal checkout with Pay Later |
-| _HOSTED_URL_/share?from=demo&url=%2Fshops%2Fglowbox | **Use caution, 72**: higher refund rate, store-credit-only returns |
-| _HOSTED_URL_/share?from=demo&url=%2Fshops%2Fflashdeal-outlet | **High risk, 13**: a third of orders refunded, 3 disputes lost, fake countdown, 86% below market price; safer alternatives instead of checkout |
+| [Check Aurora Threads](https://vouch-6ilp.onrender.com/share?from=demo&url=%2Fshops%2Faurora-threads) | **Trusted, 92**: half the buyers came back; PayPal checkout with Pay Later |
+| [Check Glowbox](https://vouch-6ilp.onrender.com/share?from=demo&url=%2Fshops%2Fglowbox) | **Use caution, 73**: higher refund rate, store-credit-only returns |
+| [Check FlashDeal Outlet](https://vouch-6ilp.onrender.com/share?from=demo&url=%2Fshops%2Fflashdeal-outlet) | **High risk, 13**: a third of orders refunded, 3 disputes lost, fake countdown, 86% below market price; safer alternatives instead of checkout |
+
+Each link starts a fresh check; the result page shows every step live.
 
 Other things to try:
 
-- **Demo feed** (_HOSTED_URL_/feed): tap **Share** on a post, or **Vouch** to check it. The fourth post never names
+- **[Demo feed](https://vouch-6ilp.onrender.com/feed)**: tap **Share** on a post, or **Vouch** to check it. The fourth post never names
   its shop, so Vouch asks "Is this the shop?".
 - **Any real shop link**: paste it on the home page. Without PayPal history you get the clearly labelled
   public-signals score.
@@ -173,7 +175,8 @@ npx tsx scripts/demo-checks.mts           # run the 3 demo checks against a runn
 ## Deploying (Render)
 
 [`render.yaml`](render.yaml) is a Render Blueprint for one Node web service with a health check at `/api/health`.
-Create the Blueprint from this repo, enter the secrets it asks for, `APP_URL` is optional: the app uses Render's `RENDER_EXTERNAL_URL` automatically (set `APP_URL` only for a custom domain).
+Create the Blueprint from this repo and enter the secrets it asks for. `APP_URL` is optional: the app uses
+Render's `RENDER_EXTERNAL_URL` automatically, so set `APP_URL` only for a custom domain.
 SQLite lives on the instance's disk (`DATABASE_PATH`); it resets on redeploy, which is fine because checks are
 short-lived and all PayPal data comes from the sandbox.
 
