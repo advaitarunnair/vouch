@@ -6,7 +6,9 @@ services:
     runtime: node
     plan: free # spins down after 15 min idle; see README "Keeping the demo awake"
     region: oregon
-    buildCommand: npm ci && npm run build
+    # NODE_ENV=production makes npm skip devDependencies, but the build needs them (typescript for
+    # next.config.ts and type-checking, Tailwind/PostCSS, ESLint). next start also loads next.config.ts.
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     autoDeployTrigger: commit
