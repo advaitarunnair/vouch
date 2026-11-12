@@ -173,7 +173,7 @@ npx tsx scripts/demo-checks.mts           # run the 3 demo checks against a runn
 ## Deploying (Render)
 
 [`render.yaml`](render.yaml) is a Render Blueprint for one Node web service with a health check at `/api/health`.
-Create the Blueprint from this repo, enter the secrets it asks for, and set `APP_URL` to the service URL.
+Create the Blueprint from this repo, enter the secrets it asks for, `APP_URL` is optional: the app uses Render's `RENDER_EXTERNAL_URL` automatically (set `APP_URL` only for a custom domain).
 SQLite lives on the instance's disk (`DATABASE_PATH`); it resets on redeploy, which is fine because checks are
 short-lived and all PayPal data comes from the sandbox.
 

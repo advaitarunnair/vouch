@@ -22,7 +22,7 @@ services:
       - key: DATABASE_PATH
         value: /tmp/vouch.db # ephemeral on Render free; checks and caches rebuild on demand
       - key: APP_URL
-        sync: false # e.g. https://vouch.onrender.com (no trailing slash)
+        sync: false # optional: only for a custom domain. Defaults to Render's RENDER_EXTERNAL_URL.
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: CHANNEL3_API_KEY

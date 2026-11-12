@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { aiConfigured } from "@/lib/ai/llm";
 import { channel3Configured } from "@/lib/channel3";
 import { db } from "@/lib/db";
+import { appOrigin } from "@/lib/fetchPage";
 import { SHOP_REGISTRY, shopCredentials } from "@/lib/shopRegistry";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ export function GET() {
     status: database === "ok" ? "ok" : "degraded",
     time: new Date().toISOString(),
     commit: process.env.RENDER_GIT_COMMIT?.slice(0, 7) ?? null,
+    app_url: appOrigin(), // public origin used for own-page detection and PayPal return URLs
     database,
     configured: {
       anthropic: aiConfigured(),

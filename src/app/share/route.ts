@@ -3,6 +3,7 @@ import { clientIp, rateLimited } from "@/lib/rateLimit";
 import { runCheck } from "@/lib/check/pipeline";
 import { createCheck, type CheckSource } from "@/lib/db";
 import { extractFirstUrl } from "@/lib/extractUrl";
+import { appOrigin } from "@/lib/fetchPage";
 
 // PWA share target (manifest: action "/share", method GET, params title/text/url)
 // and the entry point for pasted links and demo checks.
@@ -11,7 +12,8 @@ export const dynamic = "force-dynamic";
 
 export function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
-  const origin = process.env.APP_URL ?? req.nextUrl.origin;
+  // Not req.nextUrl.origin alone: on Render that is the internal https://localhost:10000.
+  const origin = appOrigin(req.nextUrl.origin);
   const url = extractFirstUrl([sp.get("url"), sp.get("text"), sp.get("title")], origin);
 
   if (!url) {

@@ -34,8 +34,14 @@ const MAX_BYTES = 1_500_000;
 const TIMEOUT_MS = 8000;
 const MAX_REDIRECTS = 3;
 
+/**
+ * The app's public origin. Behind a proxy (Render) the incoming request's own origin is an
+ * internal address such as https://localhost:10000, so prefer configured values:
+ * APP_URL, then Render's automatic RENDER_EXTERNAL_URL, then the fallback. Empty values count as unset.
+ */
 export function appOrigin(fallback?: string): string {
-  return (process.env.APP_URL ?? fallback ?? "http://localhost:3000").replace(/\/$/, "");
+  const origin = process.env.APP_URL?.trim() || process.env.RENDER_EXTERNAL_URL?.trim() || fallback || "http://localhost:3000";
+  return origin.replace(/\/+$/, "");
 }
 
 function isPrivateIp(ip: string): boolean {

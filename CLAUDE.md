@@ -182,7 +182,7 @@ Optional (only if all above works): web push on check completion; seller page wi
 
 ## Deploy & ops (Phase 9)
 - `render.yaml` Blueprint (free plan, `npm ci --include=dev && npm run build` — NODE_ENV=production would otherwise skip devDependencies the build needs (typescript for next.config.ts, Tailwind, ESLint, @types) — `npm start`, health `/api/health`, secrets `sync: false`,
-  `DATABASE_PATH=/tmp/vouch.db`, `APP_URL` must be set to the service URL). Node pinned via `.node-version` (20.20.2).
+  `DATABASE_PATH=/tmp/vouch.db`, `APP_URL` optional — `appOrigin()` falls back to Render's `RENDER_EXTERNAL_URL`; never use `req.nextUrl.origin` alone, on Render it is https://localhost:10000). Node pinned via `.node-version` (20.20.2).
 - `/api/health`: DB check + which integrations are configured (no secrets, no external calls) — use for uptime pings.
 - Rate limits (`src/lib/rateLimit.ts`, in-memory per IP): 30 checks/h, 60 chat/h, 30 orders/h; `/share` redirects to `/?error=busy`.
 - Page scan and price check run in parallel (`Promise.all`) → ~13s per check.
