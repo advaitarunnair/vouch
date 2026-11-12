@@ -48,8 +48,11 @@ Other things to try:
 - **Android**: open the site in Chrome, tap **Install Vouch**, then share any link to Vouch from another app.
 - **Test checkout** (Aurora Threads or Glowbox): log in with the PayPal sandbox buyer below. No real money moves.
 
-  - Email: _SANDBOX_BUYER_EMAIL_
-  - Password: _SANDBOX_BUYER_PASSWORD_
+  - Email: `vouch-buyer-7391@personal.example.com`
+  - Password: `VouchBuyer2026!`
+
+  This is a PayPal **sandbox** test account with play money, published on purpose for judging. It only works on
+  sandbox.paypal.com and cannot be used for real payments.
 
 The server sleeps when idle (free hosting), so the first page load can take up to a minute.
 

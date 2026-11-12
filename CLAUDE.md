@@ -187,4 +187,4 @@ Optional (only if all above works): web push on check completion; seller page wi
 - Rate limits (`src/lib/rateLimit.ts`, in-memory per IP): 30 checks/h, 60 chat/h, 30 orders/h; `/share` redirects to `/?error=busy`.
 - Page scan and price check run in parallel (`Promise.all`) → ~13s per check.
 - Local prod test: `NEXT_DIST_DIR=.next-prod npm run build` then `NEXT_DIST_DIR=.next-prod PORT=3100 APP_URL=http://localhost:3100 npx next start -p 3100`.
-- README placeholders to fill after deploy: `_HOSTED_URL_`, `_SANDBOX_BUYER_EMAIL_`, `_SANDBOX_BUYER_PASSWORD_`.
+- Hosted: https://vouch-6ilp.onrender.com (Render, Blueprint-managed, auto-deploys from `main`). README has the live links and the published sandbox buyer login for judges.
