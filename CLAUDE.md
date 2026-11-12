@@ -181,7 +181,7 @@ Optional (only if all above works): web push on check completion; seller page wi
 - Popups opened by automated clicks are blocked in the in-app browser: a human must click "Pay with PayPal" to approve.
 
 ## Deploy & ops (Phase 9)
-- `render.yaml` Blueprint (free plan, `npm ci && npm run build`, `npm start`, health `/api/health`, secrets `sync: false`,
+- `render.yaml` Blueprint (free plan, `npm ci --include=dev && npm run build` — NODE_ENV=production would otherwise skip devDependencies the build needs (typescript for next.config.ts, Tailwind, ESLint, @types) — `npm start`, health `/api/health`, secrets `sync: false`,
   `DATABASE_PATH=/tmp/vouch.db`, `APP_URL` must be set to the service URL). Node pinned via `.node-version` (20.20.2).
 - `/api/health`: DB check + which integrations are configured (no secrets, no external calls) — use for uptime pings.
 - Rate limits (`src/lib/rateLimit.ts`, in-memory per IP): 30 checks/h, 60 chat/h, 30 orders/h; `/share` redirects to `/?error=busy`.
